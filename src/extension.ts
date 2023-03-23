@@ -32,6 +32,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	const typePathFileLinkId = await deep.id(PACKAGE_NAME_DEEP_EXTENSION, 'PathFile');
 	const typeProjectNameLinkId = await deep.id(PACKAGE_NAME_DEEP_EXTENSION, 'ProjectName');
+	const typeOpenedLinkId = await deep.id(PACKAGE_NAME_DEEP_EXTENSION, 'Opened');
+	const typeClosedLinkId = await deep.id(PACKAGE_NAME_DEEP_EXTENSION, 'Closed');
 
 	const { data: ProjectNameArrayLinkId } = await deep.select({
 		type_id: await deep.id(PACKAGE_NAME_DEEP_EXTENSION, "ProjectName")
@@ -61,7 +63,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		const pathFile = file?.fileName;
 		if (pathFile.endsWith(".git")) return;
 		console.log(pathFile);
-		await deep.insert({
+		const { data: [{ id: pathFileLinkId }] } = await deep.insert({
 			type_id: typePathFileLinkId,
 			string: { data: { value: pathFile } },
 			in: {
@@ -70,7 +72,17 @@ export async function activate(context: vscode.ExtensionContext) {
 					from_id: projectNameLinkId
 				}
 			}
-
+		})
+		await deep.insert({
+			type_id: typeOpenedLinkId,
+			from_id: deep.linkId,
+			to_id: pathFileLinkId,
+			in: {
+				data: {
+					type_id: typeContainLinkId,
+					from_id: deep.linkId
+				}
+			}
 		})
 	})
 
