@@ -63,16 +63,29 @@ export async function activate(context: vscode.ExtensionContext) {
 		const pathFile = file?.fileName;
 		if (pathFile.endsWith(".git")) return;
 		console.log(pathFile);
-		const { data: [{ id: pathFileLinkId }] } = await deep.insert({
+		const { data: selectPathFile } = await deep.select({
 			type_id: typePathFileLinkId,
-			string: { data: { value: pathFile } },
-			in: {
-				data: {
-					type_id: typeContainLinkId,
-					from_id: projectNameLinkId
-				}
-			}
+			string: { value: { _eq: pathFile } }
 		})
+
+		let pathFileLinkId: number;
+		if (selectPathFile.length > 0) {
+			const [{ id: _pathFileLinkId }] = selectPathFile;
+			pathFileLinkId = _pathFileLinkId;
+		} else {
+			const { data: [{ id: _pathFileLinkId }] } = await deep.insert({
+				type_id: typePathFileLinkId,
+				string: { data: { value: pathFile } },
+				in: {
+					data: {
+						type_id: typeContainLinkId,
+						from_id: projectNameLinkId
+					}
+				}
+			})
+			pathFileLinkId = _pathFileLinkId;
+		}
+
 		await deep.insert({
 			type_id: typeOpenedLinkId,
 			from_id: deep.linkId,
