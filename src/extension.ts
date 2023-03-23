@@ -62,11 +62,11 @@ export async function activate(context: vscode.ExtensionContext) {
 	vscode.workspace.onDidOpenTextDocument(async (file) => {
 		const pathFile = file?.fileName;
 		if (pathFile.endsWith(".git")) return;
-		console.log(pathFile);
+
 		const { data: selectPathFile } = await deep.select({
 			type_id: typePathFileLinkId,
 			string: { value: { _eq: pathFile } }
-		})
+		});
 
 		let pathFileLinkId: number;
 		if (selectPathFile.length > 0) {
@@ -86,6 +86,13 @@ export async function activate(context: vscode.ExtensionContext) {
 			pathFileLinkId = _pathFileLinkId;
 		}
 
+		await deep.delete({
+			type_id: typeClosedLinkId,
+			to: {
+				id: pathFileLinkId
+			}
+		});
+
 		await deep.insert({
 			type_id: typeOpenedLinkId,
 			from_id: deep.linkId,
@@ -96,8 +103,54 @@ export async function activate(context: vscode.ExtensionContext) {
 					from_id: deep.linkId
 				}
 			}
-		})
-	})
+		});
+	});
+
+	vscode.workspace.onDidCloseTextDocument(async (file) => {
+		const pathFile = file?.fileName;
+		if (pathFile.endsWith(".git")) return;
+
+		const { data: selectPathFile } = await deep.select({
+			type_id: typePathFileLinkId,
+			string: { value: { _eq: pathFile } }
+		});
+
+		let pathFileLinkId: number;
+		if (selectPathFile.length > 0) {
+			const [{ id: _pathFileLinkId }] = selectPathFile;
+			pathFileLinkId = _pathFileLinkId;
+		} else {
+			const { data: [{ id: _pathFileLinkId }] } = await deep.insert({
+				type_id: typePathFileLinkId,
+				string: { data: { value: pathFile } },
+				in: {
+					data: {
+						type_id: typeContainLinkId,
+						from_id: projectNameLinkId
+					}
+				}
+			})
+			pathFileLinkId = _pathFileLinkId;
+		}
+		// TODO update on Contain Tree and delete contain
+		await deep.delete({
+			type_id: typeOpenedLinkId,
+			to: {
+				id: pathFileLinkId
+			}
+		});
+		await deep.insert({
+			type_id: typeClosedLinkId,
+			from_id: deep.linkId,
+			to_id: pathFileLinkId,
+			in: {
+				data: {
+					type_id: typeContainLinkId,
+					from_id: deep.linkId
+				}
+			}
+		});
+	});
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
