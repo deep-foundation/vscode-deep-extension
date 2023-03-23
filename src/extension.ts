@@ -5,7 +5,7 @@ import { generateApolloClient } from '@deep-foundation/hasura/client';
 import { DeepClient } from '@deep-foundation/deeplinks/imports/client';
 
 const rootClient = generateApolloClient({
-	path: '3006-deepfoundation-dev-9xrko488biv.ws-eu92.gitpod.io/gql',
+	path: '3006-deepfoundation-dev-nz5ae840cad.ws-eu92.gitpod.io/gql',
 	ssl: true,
 });
 
@@ -21,6 +21,8 @@ const unloginedDeep = new DeepClient({
 // Your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
 
+	const projectName = vscode.workspace.workspaceFolders?.[0]?.name;
+
 	const guest = await unloginedDeep.guest();
 	const guestDeep = new DeepClient({ deep: unloginedDeep, ...guest });
 	const admin = await guestDeep.login({ linkId: await guestDeep.id('deep', 'admin') });
@@ -31,32 +33,44 @@ export async function activate(context: vscode.ExtensionContext) {
 	const typePathFileLinkId = await deep.id(PACKAGE_NAME_DEEP_EXTENSION, 'PathFile');
 	const typeProjectNameLinkId = await deep.id(PACKAGE_NAME_DEEP_EXTENSION, 'ProjectName');
 
-	vscode.workspace.onDidOpenTextDocument(async (file) => {
-		const pathFile = file?.fileName;
-		const projectName = vscode.workspace.workspaceFolders?.[0]?.name;
-		if (pathFile.endsWith(".git")) return;
-		console.log(pathFile);
-		console.log(projectName);
-		await deep.insert({
+	const { data: ProjectNameArrayLinkId } = await deep.select({
+		type_id: await deep.id(PACKAGE_NAME_DEEP_EXTENSION, "ProjectName")
+	});
+	let projectNameLinkId: number;
+	if (ProjectNameArrayLinkId.length > 0) {
+		console.log("ProjectNameArrayLinkId", ProjectNameArrayLinkId);
+		const [{ id: _projectNameLinkId }] = ProjectNameArrayLinkId;
+		projectNameLinkId = _projectNameLinkId;
+	} else {
+		const { data: [{ id: _projectNameLinkId }] } = await deep.insert({
 			type_id: typeProjectNameLinkId,
-			string: { data: { value: projectName} },
+			string: { data: { value: projectName } },
 			in: {
 				data: {
 					type_id: typeContainLinkId,
 					from_id: deep.linkId
 				}
 			},
-			out: {
+		})
+		console.log("create link", _projectNameLinkId)
+		projectNameLinkId = _projectNameLinkId;
+	}
+
+
+	vscode.workspace.onDidOpenTextDocument(async (file) => {
+		const pathFile = file?.fileName;
+		if (pathFile.endsWith(".git")) return;
+		console.log(pathFile);
+		await deep.insert({
+			type_id: typePathFileLinkId,
+			string: { data: { value: pathFile } },
+			in: {
 				data: {
 					type_id: typeContainLinkId,
-					to: {
-						data: {
-							type_id: typePathFileLinkId,
-							string: { data: { value: pathFile } },
-						}
-					}
+					from_id: projectNameLinkId
 				}
 			}
+
 		})
 	})
 
