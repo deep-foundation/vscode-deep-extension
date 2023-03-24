@@ -5,7 +5,7 @@ import { generateApolloClient } from '@deep-foundation/hasura/client';
 import { DeepClient } from '@deep-foundation/deeplinks/imports/client';
 
 const rootClient = generateApolloClient({
-	path: '3006-deepfoundation-dev-vg4f0vb32c9.ws-eu92.gitpod.io/gql',
+	path: '3006-deepfoundation-dev-03ar97n0ip9.ws-eu92.gitpod.io/gql',
 	ssl: true,
 });
 
@@ -40,7 +40,6 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 	let projectNameLinkId: number;
 	if (ProjectNameArrayLinkId.length > 0) {
-		console.log("ProjectNameArrayLinkId", ProjectNameArrayLinkId);
 		const [{ id: _projectNameLinkId }] = ProjectNameArrayLinkId;
 		projectNameLinkId = _projectNameLinkId;
 	} else {
@@ -54,7 +53,6 @@ export async function activate(context: vscode.ExtensionContext) {
 				}
 			},
 		})
-		console.log("create link", _projectNameLinkId)
 		projectNameLinkId = _projectNameLinkId;
 	}
 
@@ -86,12 +84,20 @@ export async function activate(context: vscode.ExtensionContext) {
 			pathFileLinkId = _pathFileLinkId;
 		}
 
+
 		await deep.delete({
-			type_id: typeClosedLinkId,
-			to: {
-				id: pathFileLinkId
+			up: {
+				tree_id: { _eq: await deep.id("@deep-foundation/core", "containTree") },
+				parent: {
+					type_id: { _id: ["@deep-foundation/core", "Contain"] },
+					to: {
+						type_id: typeClosedLinkId,
+						to_id: pathFileLinkId,
+					},
+					from_id: deep.linkId
+				}
 			}
-		});
+		})
 
 		await deep.insert({
 			type_id: typeOpenedLinkId,
@@ -132,13 +138,21 @@ export async function activate(context: vscode.ExtensionContext) {
 			})
 			pathFileLinkId = _pathFileLinkId;
 		}
-		// TODO update on Contain Tree and delete contain
+
 		await deep.delete({
-			type_id: typeOpenedLinkId,
-			to: {
-				id: pathFileLinkId
+			up: {
+				tree_id: { _eq: await deep.id("@deep-foundation/core", "containTree") },
+				parent: {
+					type_id: { _id: ["@deep-foundation/core", "Contain"] },
+					to: {
+						type_id: typeOpenedLinkId,
+						to_id: pathFileLinkId,
+					},
+					from_id: deep.linkId
+				}
 			}
-		});
+		})
+
 		await deep.insert({
 			type_id: typeClosedLinkId,
 			from_id: deep.linkId,
