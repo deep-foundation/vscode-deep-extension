@@ -5,7 +5,7 @@ import { generateApolloClient } from '@deep-foundation/hasura/client';
 import { DeepClient } from '@deep-foundation/deeplinks/imports/client';
 
 const rootClient = generateApolloClient({
-	path: '3006-deepfoundation-dev-nz5ae840cad.ws-eu92.gitpod.io/gql',
+	path: '3006-deepfoundation-dev-vg4f0vb32c9.ws-eu92.gitpod.io/gql',
 	ssl: true,
 });
 
@@ -152,23 +152,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		});
 	});
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "vscode-deep-extension" is now active!');
-
-
-
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('vscode-deep-extension.helloWorld', async () => {
-
-
-
-		vscode.window.showInformationMessage('Hello World from vscode-deep-extension!');
-	});
-
-	context.subscriptions.push(disposable);
+	vscode.window.showInformationMessage('deep extension started!');
 }
 
 // This method is called when your extension is deactivated
