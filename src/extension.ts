@@ -4,29 +4,30 @@ import * as vscode from 'vscode';
 import { generateApolloClient } from '@deep-foundation/hasura/client';
 import { DeepClient } from '@deep-foundation/deeplinks/imports/client';
 
-const rootClient = generateApolloClient({
-	path: '3006-deepfoundation-dev-03ar97n0ip9.ws-eu92.gitpod.io/gql',
-	ssl: true,
-});
-
 const PACKAGE_NAME_DEEP_EXTENSION = '@l4legenda/vscode-deep-extension';
 
-const unloginedDeep = new DeepClient({
-	apolloClient: rootClient,
-});
+let deep: DeepClient;
 
-
-
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
-export async function activate(context: vscode.ExtensionContext) {
-
-	const projectName = vscode.workspace.workspaceFolders?.[0]?.name;
+async function loginDeep() {
+	const config = vscode.workspace.getConfiguration('vscode-deep-extension');
+	const rootClient = generateApolloClient({
+		path: config.get("path"),
+		ssl: config.get("ssl"),
+	});
+	const unloginedDeep = new DeepClient({
+		apolloClient: rootClient,
+	});
 
 	const guest = await unloginedDeep.guest();
 	const guestDeep = new DeepClient({ deep: unloginedDeep, ...guest });
 	const admin = await guestDeep.login({ linkId: await guestDeep.id('deep', 'admin') });
-	const deep = new DeepClient({ deep: guestDeep, ...admin });
+	deep = new DeepClient({ deep: guestDeep, ...admin });
+}
+
+async function activeEventsListenerFiles() {
+
+	const projectName = vscode.workspace.workspaceFolders?.[0]?.name;
+
 
 	const typeContainLinkId = await deep.id("@deep-foundation/core", 'Contain');
 
@@ -38,6 +39,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	const { data: ProjectNameArrayLinkId } = await deep.select({
 		type_id: await deep.id(PACKAGE_NAME_DEEP_EXTENSION, "ProjectName")
 	});
+
 	let projectNameLinkId: number;
 	if (ProjectNameArrayLinkId.length > 0) {
 		const [{ id: _projectNameLinkId }] = ProjectNameArrayLinkId;
@@ -165,8 +167,43 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 		});
 	});
+}
+
+// This method is called when your extension is activated
+// Your extension is activated the very first time the command is executed
+export async function activate(context: vscode.ExtensionContext) {
+
+	let onCommandSetPath = vscode.commands.registerCommand('vscode-deep-extension.set-path', async () => {
+		const config = vscode.workspace.getConfiguration('vscode-deep-extension');
+		const path = await vscode.window.showInputBox({ placeHolder: 'Path' });
+		config.update("path", path, true);
+		vscode.window.showInformationMessage("Path deep is updated!");
+	});
+
+	let onCommandSetSSL = vscode.commands.registerCommand('vscode-deep-extension.set-ssl', async () => {
+		const config = vscode.workspace.getConfiguration('vscode-deep-extension');
+		const ssl = await vscode.window.showInputBox({ placeHolder: 'SSL' });
+		const isSSL = ssl?.toLocaleLowerCase() === 'true';
+		config.update("ssl", isSSL, true);
+		vscode.window.showInformationMessage("SSL deep is updated!");
+	});
+
+	let onCommandReconnect = vscode.commands.registerCommand('vscode-deep-extension.reconnect', async () => {
+		await loginDeep();
+		vscode.window.showInformationMessage("deep reconnected!");
+	});
+
+	context.subscriptions.push(onCommandSetPath);
+	context.subscriptions.push(onCommandSetSSL);
+	context.subscriptions.push(onCommandReconnect);
+
+	await loginDeep();
+	await activeEventsListenerFiles();
+
 
 	vscode.window.showInformationMessage('deep extension started!');
+
+
 }
 
 // This method is called when your extension is deactivated
